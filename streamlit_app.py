@@ -1,7 +1,7 @@
 import numpy as np
 import streamlit as st
-import moviepy.editor as mpy
 from PIL import Image, ImageDraw, ImageFont
+import moviepy.editor as mpy
 
 def format_duration(seconds):
     minutes, seconds = divmod(seconds, 60)
