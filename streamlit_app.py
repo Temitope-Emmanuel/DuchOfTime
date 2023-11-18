@@ -47,9 +47,12 @@ def make_frame(t):
 
 def predict():
     print('we are here and now', duration)
-    clip = mpy.VideoClip(make_frame, duration=int(duration))
-    clip.write_videofile(temp_file_path, fps=fps,
-                         codec="libx264", audio_codec="aac")
+    try:
+        clip = mpy.VideoClip(make_frame, duration=int(duration))
+        clip.write_videofile(temp_file_path, fps=fps,
+                            codec="libx264", audio_codec="aac")
+    except Exception as e:
+        print(e)
 
 
 st.write(
