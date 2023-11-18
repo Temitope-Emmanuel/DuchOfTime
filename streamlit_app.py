@@ -1,10 +1,7 @@
-import altair as alt
 import numpy as np
-import pandas as pd
 import streamlit as st
 import moviepy.editor as mpy
 from PIL import Image, ImageDraw, ImageFont
-import os
 
 def format_duration(seconds):
     minutes, seconds = divmod(seconds, 60)
