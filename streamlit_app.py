@@ -2,39 +2,91 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import moviepy.editor as mpy
+from PIL import Image, ImageDraw, ImageFont
+import os
 
+def format_duration(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    return f"{minutes:02d}:{seconds:02d}"
+
+global img, bg_img, submit_btn
+fps = 15
+video_file_path = ''
+width = 0
+height = 0
+
+def get_position():
+    return{
+    'Top': height - 16,
+    'Center': height / 2,
+    'Bottom': height/ 3
+}
+
+st.write(
+    """
+# Welcome to DuchOfTime
+Create Countdown Timer for any of your events
 """
-# Welcome to Streamlit!
+)
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+bg_img = st.sidebar.file_uploader(
+    label="Select Image for Background of countdown video",
+    type=["png", "jpg"]
+)
+if bg_img:
+    st.sidebar.image(bg_img, width=256)
+    st.sidebar.write('This is the background Image to use', bg_img.name)
+countdown_color = st.sidebar.color_picker(
+    'Select the color of the countdown text')
+choose_font = st.sidebar.selectbox(label='Select the font to use', options=[
+                                   'Impacted', 'Lato-Regular', 'SilomBol', 'Trajan Bold'])
+choose_font_size = st.sidebar.number_input(label='Choose the font size',
+                                            min_value=10, placeholder=10, step=4)
+position = st.sidebar.selectbox(label='Select Position', options=get_position().keys())
+duration = st.sidebar.number_input('Choose how long the countdown will be',
+                                    min_value=1, placeholder=10, step=1)
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+if bg_img is not None:
+    img = Image.open(bg_img)
+    width, height = img.size
+    video_file_path = bg_img.name.split('.')[0]+'.mp4'
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+def make_frame(t):
+    global last_image
+    font = ImageFont.truetype(choose_font+'.ttf', choose_font_size)
+    print('this is the text', position, get_position()[position])
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+    image = img.copy()
+    draw = ImageDraw.Draw(image)
+    space_length = draw.textlength(" ", font)
+    word = format_duration(int(duration)-int(t))
+    word_length = draw.textlength(word + " ", font) - space_length
+    draw.text(((width/2)-(word_length/2), get_position()[position]),
+              word, fill=countdown_color, font=font)
+    last_image = np.array(image)
+    return last_image
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+def predict():
+    print('we are here and now', duration)
+    clip = mpy.VideoClip(make_frame, duration=int(duration))
+    clip.write_videofile(video_file_path, fps=fps,
+                         codec="libx264", audio_codec="aac")
+    return video_file_path
+
+
+if bg_img:
+    submit_btn = st.button('Generate Countdown Video',
+                           type="primary", on_click=predict)
+
+if video_file_path is not "" and submit_btn:
+    video_file = open(video_file_path, 'rb')
+    video_bytes = video_file.read()
+    st.video(video_bytes)
+    st.download_button(label="Download video",
+                       file_name=video_file_path,
+                       mime="video/mp4",
+                       data=video_bytes)
+    # os.remove(video_file_path)
