@@ -8,15 +8,16 @@ def format_duration(seconds):
     minutes, seconds = divmod(seconds, 60)
     return f"{minutes:02d}:{seconds:02d}"
 
-# def get_temp_file():
-#     with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
-#         return temp_file.name
+def get_temp_file():
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
+        return temp_file.name
 
 global img, bg_img, submit_btn
 fps = 15
 width = 0
 height = 0
-temp_file_path = 'myfile.mp4'
+temp_file_path = "myfile.mp4"
+video_ready = False
 
 print('this is the temp',temp_file_path)
 
@@ -42,6 +43,7 @@ def make_frame(t):
     draw.text(((width/2)-(word_length/2), get_position()[position]),
               word, fill=countdown_color, font=font)
     last_image = np.array(image)
+    video_ready = True
     return last_image
 
 
@@ -87,7 +89,7 @@ if bg_img:
     submit_btn = st.button('Generate Countdown Video',
                            type="primary", on_click=predict)
 
-    if temp_file_path != "" and submit_btn is True:
+    if temp_file_path != "" and submit_btn is True and video_ready is True:
         file_exist = os.path.exists(temp_file_path)
         print('the file exist', file_exist, temp_file_path)
         video_file = open(temp_file_path, 'rb')
