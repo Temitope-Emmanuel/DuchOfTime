@@ -18,8 +18,6 @@ fps = 15
 width = 0
 height = 0
 temp_file_path = get_temp_file()
-# video_ready = False
-
 print('this is the temp',temp_file_path)
 
 
@@ -95,7 +93,6 @@ if bg_img:
         print('the file exist', file_exist, temp_file_path)
         video_file = open(temp_file_path, 'rb')
         video_clip = video_file.read()
-        # video_clip = mpy.VideoFileClip(temp_file_path)
         st.video(video_clip)
         st.download_button(label="Download video",
                         file_name=temp_file_path,
