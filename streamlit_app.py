@@ -87,7 +87,7 @@ if bg_img:
     submit_btn = st.button('Generate Countdown Video',
                            type="primary", on_click=predict)
 
-    if temp_file_path is not "" and submit_btn is True:
+    if temp_file_path != "" and submit_btn is True:
         file_exist = os.path.exists(temp_file_path)
         print('the file exist', file_exist, temp_file_path)
         video_file = open(temp_file_path, 'rb')
