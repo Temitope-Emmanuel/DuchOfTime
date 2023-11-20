@@ -39,9 +39,8 @@ def get_position():
 
 
 def make_frame(t):
-    global last_image, video_ready
+    global last_image
     font = ImageFont.truetype(choose_font+'.ttf', choose_font_size)
-    print('this is the text', position, get_position()[position])
     image = img.copy()
     draw = ImageDraw.Draw(image)
     space_length = draw.textlength(" ", font)
@@ -50,7 +49,6 @@ def make_frame(t):
     draw.text(((width/2)-(word_length/2), get_position()[position]),
               word, fill=countdown_color, font=font)
     last_image = np.array(image)
-    video_ready = True
     return last_image
 
 
