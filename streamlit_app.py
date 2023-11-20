@@ -26,7 +26,7 @@ def get_temp_file():
 fps = 15
 width = 0
 height = 0
-# temp_file_path = get_temp_file()
+temp_file_path = get_temp_file()
 print('this is the temp file',temp_file_path)
 
 
@@ -106,6 +106,6 @@ if bg_img:
             video_clip = video_file.read()
             st.video(video_clip)
             st.download_button(label="Download video",
-                            file_name=temp_file_path,
+                            file_name=bg_img.name.split(".")[0] + '.mp4',
                             mime="video/mp4",
                             data=video_clip)
