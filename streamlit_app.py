@@ -8,12 +8,17 @@ def format_duration(seconds):
     minutes, seconds = divmod(seconds, 60)
     return f"{minutes:02d}:{seconds:02d}"
 
+global img, bg_img, submit_btn, temp_file_path
+
 @st.cache_data
 def get_temp_file():
-    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
-        return temp_file.name
+    if temp_file_path != "":
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
+            return temp_file.name
+    else:
+        return temp_file_path
 
-global img, bg_img, submit_btn
+
 fps = 15
 width = 0
 height = 0
@@ -59,7 +64,8 @@ def predict():
 st.write(
     """
 # Welcome to DuchOfTime
-Create Countdown Timer for any of your events
+Create Countdown Timer for any of your events,
+If it showing a blank screen try it again
 """
 )
 
