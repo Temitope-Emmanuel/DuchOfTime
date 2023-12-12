@@ -27,26 +27,26 @@ fps = 15
 width = 0
 height = 0
 temp_file_path = get_temp_file()
-print('this is the temp file',temp_file_path)
 
 
 def get_position():
     return {
         'Top': height - 16,
         'Center': height / 2,
-        'Bottom': height / 3
+        'Bottom': height - (height / 3.5)
     }
 
 
 def make_frame(t):
     global last_image
     font = ImageFont.truetype(choose_font+'.ttf', choose_font_size)
+    selected_position = get_position()[position]
     image = img.copy()
     draw = ImageDraw.Draw(image)
     space_length = draw.textlength(" ", font)
     word = format_duration(int(duration)-int(t))
     word_length = draw.textlength(word + " ", font) - space_length
-    draw.text(((width/2)-(word_length/2), get_position()[position]),
+    draw.text(((width/2)-(word_length/2), selected_position),
               word, fill=countdown_color, font=font)
     last_image = np.array(image)
     return last_image
@@ -79,7 +79,6 @@ if bg_img:
     img = Image.open(bg_img)
     width, height = img.size
     st.sidebar.image(bg_img, width=256)
-    st.sidebar.write('This is the background Image to use', bg_img.name)
 countdown_color = st.sidebar.color_picker(
     'Select the color of the countdown text')
 choose_font = st.sidebar.selectbox(label='Select the font to use', options=[
