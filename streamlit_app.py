@@ -1,108 +1,116 @@
-import numpy as np
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
-import moviepy.editor as mpy
+import zipfile
+import subprocess
+import pandas as pd
 import tempfile
+import ffmpeg
+import io
 import os
 
-def format_duration(seconds):
-    minutes, seconds = divmod(seconds, 60)
-    return f"{minutes:02d}:{seconds:02d}"
+fade_in = 1
+fade_out = 1
 
-global img, bg_img, submit_btn
+def create_zip_from_folder(folder_path):
+    zip_file_path = f"{folder_path}.zip"
+    with zipfile.ZipFile(zip_file_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                zipf.write(file_path, os.path.relpath(file_path, folder_path))
+    return zip_file_path
 
-temp_file_path = "myfile.mp4"
-print(temp_file_path)
 
-@st.cache_data
-def get_temp_file():
-    if temp_file_path == "":
-        return temp_file_path
+def generate_thumbnail(video_bytes, thumbnail_path, time="00:01:05"):
+    input_stream = io.BytesIO(video_bytes)
+    ffmpeg.input("pipe:0", ss=time).output(thumbnail_path, vframes=1).run(input=input_stream.read(), overwrite_output=True)
+
+
+def time_to_seconds(time_str):
+    parts = time_str.split(":")
+    if len(parts) == 3:
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    elif len(parts) == 2:
+        return int(parts[0]) * 60 + float(parts[1])
     else:
-        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
-            return temp_file.name
+        return float(parts[0])
 
 
-fps = 15
-width = 0
-height = 0
-temp_file_path = get_temp_file()
-
-
-def get_position():
-    return {
-        'Top': height - 16,
-        'Center': height / 2,
-        'Bottom': height - (height / 3.5)
-    }
-
-
-def make_frame(t):
-    global last_image
-    font = ImageFont.truetype(choose_font+'.ttf', choose_font_size)
-    selected_position = get_position()[position]
-    image = img.copy()
-    draw = ImageDraw.Draw(image)
-    space_length = draw.textlength(" ", font)
-    word = format_duration(int(duration)-int(t))
-    word_length = draw.textlength(word + " ", font) - space_length
-    draw.text(((width/2)-(word_length/2), selected_position),
-              word, fill=countdown_color, font=font)
-    last_image = np.array(image)
-    return last_image
-
-
-def predict():
-    global video_ready
-    print('we are here and now', duration)
+def cut_video_segment(input_bytes, output_file, start_time, end_time):
+    start_time_sec = time_to_seconds(start_time)
+    end_time_sec = time_to_seconds(end_time)
+    duration = end_time_sec - start_time_sec
+    command = [
+        "ffmpeg",
+        "-ss", start_time,
+        "-to", end_time,
+        "-i", "pipe:0",
+        '-vf', f'fade=t=in:st=0:d={fade_in}, fade=t=out:st={duration-fade_out}:d={fade_out}',
+        '-af', f'afade=t=in:st=0:d={fade_in}, afade=t=out:st={duration-fade_out}:d={fade_out}',
+        output_file, "-y"
+    ]
     try:
-        clip = mpy.VideoClip(make_frame, duration=int(duration))
-        clip.write_videofile(temp_file_path, fps=fps,
-                            codec="libx264", audio_codec="aac")
-        video_ready = True  # Set video_ready to True after successful video generation
-    except Exception as e:
-        print(e)
+        process = subprocess.run(command, input=input_bytes,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        st.error(f"Error during FFmpeg processing: {e.stderr.decode()}")
+
+
+def process_segments(csv_file, input_bytes):
+    df = pd.read_csv(csv_file)
+    temp_dir = tempfile.mkdtemp("segments")
+    for index, row in df.iterrows():
+        start_time = row["start_time"]
+        end_time = row["end_time"]
+        file_path = os.path.join(temp_dir, f"segment{index+1}.mp4")
+        print(f"Processing segment {index + 1}: {start_time} to {end_time}")
+        cut_video_segment(input_bytes, file_path, start_time, end_time)
+    return temp_dir
+
+
+temp_image_file = False
 
 st.write(
     """
-# Welcome to DuchOfTime
-Create Countdown Timer for any of your events,
-If it showing a blank screen try it again
+# Welcome to VideoRonin
+Easily cut segments of a video via web
 """
 )
 
-bg_img = st.sidebar.file_uploader(
-    label="Select Image for Background of countdown video",
-    type=["png", "jpg"]
+selected_video = st.sidebar.file_uploader(
+    label="Select Video to cut segment from",
+    type=["mp4"]
 )
-if bg_img:
-    img = Image.open(bg_img)
-    width, height = img.size
-    st.sidebar.image(bg_img, width=256)
-countdown_color = st.sidebar.color_picker(
-    'Select the color of the countdown text')
-choose_font = st.sidebar.selectbox(label='Select the font to use', options=[
-                                   'Impacted', 'Lato-Regular', 'SilomBol', 'Trajan Bold'])
-choose_font_size = st.sidebar.number_input(label='Choose the font size',
-                                           min_value=10, step=4)
-position = st.sidebar.selectbox(
-    label='Select Position', options=get_position().keys())
-duration = st.sidebar.number_input('Choose how long the countdown will be',
-                                   min_value=1, step=1)
+if selected_video:
+    # thumbnail = generate_thumbnail(selected_video.read(), "thumbnail.png")
+    # st.sidebar.image("thumbnail.png")
 
+    fade_in = st.sidebar.slider(
+        "Select a fade in duration",
+        min_value=0,
+        max_value=10,
+        value=1,
+        step=1
+    )
+    st.sidebar.write(f"Selected Fade in time: {fade_in}s")
+    fade_out = st.sidebar.slider(
+        "Select a fade out duration",
+        min_value=0,
+        max_value=10,
+        value=1,
+        step=1
+    )
+    st.sidebar.write(f"Selected Fade out time: {fade_out}s")
 
-if bg_img:
-    submit_btn = st.button('Generate Countdown Video', type="primary", on_click=predict)
-
-    if temp_file_path != "" and submit_btn is True:
-        print('this is how the temp_file_path looks', temp_file_path)
-        file_exist = os.path.exists(temp_file_path)
-        print('the file exist', file_exist, temp_file_path)
-        if file_exist:
-            video_file = open(temp_file_path, 'rb')
-            video_clip = video_file.read()
-            st.video(video_clip)
-            st.download_button(label="Download video",
-                            file_name=bg_img.name.split(".")[0] + '.mp4',
-                            mime="video/mp4",
-                            data=video_clip)
+    uploaded_csv = st.sidebar.file_uploader(
+        "Choose CSV file that contains the timestamp", type="csv")
+    if uploaded_csv is not None:
+        if st.sidebar.button('Cut Videos', type="primary"):
+            temp_dir = process_segments(io.BytesIO(
+                uploaded_csv.read()), selected_video.read())
+            if os.path.exists(temp_dir):
+                zip_file_path = create_zip_from_folder(temp_dir)
+                with open(zip_file_path, "rb") as f:
+                    st.download_button(label="Download videos", data=f, file_name=os.path.basename(
+                        zip_file_path), mime="application/zip")
+            else:
+                st.error(f"The folder '{temp_dir}' does not exist.")
